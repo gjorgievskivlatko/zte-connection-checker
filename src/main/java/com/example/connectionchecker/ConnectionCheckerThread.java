@@ -29,6 +29,11 @@ public class ConnectionCheckerThread extends Thread {
 
     private final Logger logger = LoggerFactory.getLogger(ConnectionCheckerThread.class);
 
+    private int connectionFailures = 0;
+    private int successfullRestarts = 0;
+    private int failedRestarts = 0;
+    private boolean restarting = false;
+
     public ConnectionCheckerThread(int interval, String domain, String password,
                                    FetchRDCommand fetchRDCommand,
                                    LoginCommand loginCommand, RebootCommand rebootCommand,
@@ -63,6 +68,8 @@ public class ConnectionCheckerThread extends Thread {
 
                 if (restart) {
                     try {
+                        restarting = true;
+                        connectionFailures++;
                         setErrorStatus("connection failed, restarting...", null);
                         FirmwareVersionResultDto firmwareVersionResultDto = firmwareVersionCommand.execute(new FirmwareVersionCommand.FirmwareVersionCommandContext(domain));
                         setInfoStatus("fetched firmware version: %s".formatted(firmwareVersionResultDto.getFirmwareVersion()));
@@ -74,15 +81,24 @@ public class ConnectionCheckerThread extends Thread {
                         setInfoStatus("login result=%s, cookie=%s".formatted(loginResultDto.getResultDto().getResult(), loginResultDto.getCookie()));
                         String ad = DigestUtils.md5Hex(a + rdDto.getRD());
                         ResultDto rebootResult = rebootCommand.execute(new RebootCommand.RebootCommandContext(domain, loginResultDto.getCookie(), ad));
-                        setInfoStatus("reboot finished, result=%s".formatted(rebootResult.getResult()));
+                        if ("success".equals(rebootResult.getResult())) {
+                            successfullRestarts++;
+                        } else {
+                            failedRestarts++;
+                        }
+                        setInfoStatus("reboot commands executed, waiting for a device/router startup, result=%s".formatted(rebootResult.getResult()));
                         // wait for a device startup
                         Thread.sleep(TimeUnit.MINUTES.toMillis(1));
+                        restarting = false;
+                        setInfoStatus("reboot should be finished");
                     } catch (ConnectException e) {
                         setWarnStatus("Can not connect to the router", e);
                     } catch (InterruptedException e) {
                         throw e;
                     } catch (Exception e) {
                         setErrorStatus("Error", e);
+                    } finally {
+                        restarting = false;
                     }
                 }
                 Thread.sleep(interval);
@@ -95,7 +111,8 @@ public class ConnectionCheckerThread extends Thread {
     private void setInfoStatus(String txt) {
         logger.info(txt);
         if (statusLbl != null) {
-            statusLbl.setText(txt);
+            String msg = getCountersLabel() + txt;
+            statusLbl.setText(msg);
             statusLbl.setForeground(new Color(17, 106, 72, 255));
         }
     }
@@ -107,7 +124,8 @@ public class ConnectionCheckerThread extends Thread {
             logger.warn(txt);
         }
         if (statusLbl != null) {
-            statusLbl.setText(txt);
+            String msg = getCountersLabel() + txt;
+            statusLbl.setText(msg);
             statusLbl.setForeground(new Color(246, 201, 6));
         }
     }
@@ -119,8 +137,13 @@ public class ConnectionCheckerThread extends Thread {
             logger.error(txt);
         }
         if (statusLbl != null) {
-            statusLbl.setText(txt);
+            String msg = getCountersLabel() + txt;
+            statusLbl.setText(msg);
             statusLbl.setForeground(Color.RED);
         }
+    }
+
+    private String getCountersLabel() {
+        return "connectionFailures: %s, successfullRestarts: %s, failedRestarts: %s, restarting: %s%n----------------------------------------------------------------------%n%n".formatted(connectionFailures, successfullRestarts, failedRestarts, restarting);
     }
 }
