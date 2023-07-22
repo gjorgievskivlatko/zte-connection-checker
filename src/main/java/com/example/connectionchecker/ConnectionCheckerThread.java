@@ -26,6 +26,7 @@ public class ConnectionCheckerThread extends Thread {
     private final FirmwareVersionCommand firmwareVersionCommand;
     private final CheckConnectionCommand checkConnectionCommand;
     private final JTextArea statusLbl;
+    private final JLabel fwLbl;
 
     private final Logger logger = LoggerFactory.getLogger(ConnectionCheckerThread.class);
 
@@ -39,7 +40,7 @@ public class ConnectionCheckerThread extends Thread {
                                    LoginCommand loginCommand, RebootCommand rebootCommand,
                                    FirmwareVersionCommand firmwareVersionCommand,
                                    CheckConnectionCommand checkConnectionCommand,
-                                   JTextArea statusLbl) {
+                                   JTextArea statusLbl, JLabel fwLbl) {
         this.interval = interval;
         this.domain = domain;
         this.password = password;
@@ -49,18 +50,50 @@ public class ConnectionCheckerThread extends Thread {
         this.firmwareVersionCommand = firmwareVersionCommand;
         this.checkConnectionCommand = checkConnectionCommand;
         this.statusLbl = statusLbl;
+        this.fwLbl = fwLbl;
     }
 
     @Override
     public void run() {
         try {
             while (true) {
+                boolean isMF971 = false;
+                String fwVersion = null;
+                try {
+                    FirmwareVersionResultDto firmwareVersionResultDto = firmwareVersionCommand.execute(new FirmwareVersionCommand.FirmwareVersionCommandContext(domain));
+                    if (isValidFirmwareVersion(firmwareVersionResultDto.getFirmwareVersion())) {
+                        isMF971 = true;
+                        fwVersion = firmwareVersionResultDto.getFirmwareVersion();
+                        setInfoFwVersion(firmwareVersionResultDto.getFirmwareVersion());
+                    } else {
+                        setErrorFwVersion(firmwareVersionResultDto.getFirmwareVersion());
+                    }
+                } catch (ConnectException e) {
+                    setWarnStatus("Can not connect to the router during firmware check", e);
+                } catch (InterruptedException e) {
+                    throw e;
+                } catch (HttpTimeoutException e) {
+                    setWarnStatus("HttpTimeout during firmware check", e);
+                } catch (Exception e) {
+                    setErrorStatus("Unexpected exception during firmware check", e);
+                }
+
+                if (!isMF971) {
+                    Thread.sleep(10_000);
+                    continue;
+                }
+
                 boolean restart = false;
                 try {
                     checkConnectionCommand.execute(null);
                     setInfoStatus("connection success");
+                } catch (ConnectException e) {
+                    setWarnStatus("Can not connect to the router during connection check", e);
+                } catch (InterruptedException e) {
+                    throw e;
                 } catch (HttpTimeoutException e) {
                     restart = true;
+                    setWarnStatus("HttpTimeout during connection check", e);
                 } catch (Exception e) {
                     restart = true;
                     setErrorStatus("Unexpected exception during connection check", e);
@@ -71,14 +104,12 @@ public class ConnectionCheckerThread extends Thread {
                         restarting = true;
                         connectionFailures++;
                         setErrorStatus("connection failed, restarting...", null);
-                        FirmwareVersionResultDto firmwareVersionResultDto = firmwareVersionCommand.execute(new FirmwareVersionCommand.FirmwareVersionCommandContext(domain));
-                        setInfoStatus("fetched firmware version: %s".formatted(firmwareVersionResultDto.getFirmwareVersion()));
-                        String a = DigestUtils.md5Hex(firmwareVersionResultDto.getFirmwareVersion());
-                        setInfoStatus("fw=%s, md5=%s".formatted(firmwareVersionResultDto.getFirmwareVersion(), a));
+                        String a = DigestUtils.md5Hex(fwVersion);
+                        setInfoStatus(String.format("fw=%s, md5=%s", fwVersion, a));
                         RDDto rdDto = fetchRDCommand.execute(new FetchRDCommand.FetchRDCommandContext(domain));
-                        setInfoStatus("fetched RD=%s".formatted(rdDto.getRD()));
+                        setInfoStatus(String.format("fetched RD=%s", rdDto.getRD()));
                         LoginResultDto loginResultDto = loginCommand.execute(new LoginCommand.LoginCommandContext(domain, password));
-                        setInfoStatus("login result=%s, cookie=%s".formatted(loginResultDto.getResultDto().getResult(), loginResultDto.getCookie()));
+                        setInfoStatus(String.format("login result=%s, cookie=%s", loginResultDto.getResultDto().getResult(), loginResultDto.getCookie()));
                         String ad = DigestUtils.md5Hex(a + rdDto.getRD());
                         ResultDto rebootResult = rebootCommand.execute(new RebootCommand.RebootCommandContext(domain, loginResultDto.getCookie(), ad));
                         if ("success".equals(rebootResult.getResult())) {
@@ -86,7 +117,7 @@ public class ConnectionCheckerThread extends Thread {
                         } else {
                             failedRestarts++;
                         }
-                        setInfoStatus("reboot commands executed, waiting for a device/router startup, result=%s".formatted(rebootResult.getResult()));
+                        setInfoStatus(String.format("reboot commands executed, waiting for a device/router startup, result=%s", rebootResult.getResult()));
                         // wait for a device startup
                         Thread.sleep(TimeUnit.MINUTES.toMillis(1));
                         restarting = false;
@@ -104,8 +135,16 @@ public class ConnectionCheckerThread extends Thread {
                 Thread.sleep(interval);
             }
         } catch (InterruptedException e) {
-            setErrorStatus("Connection checking interrupted", e);
+            setInfoStatus("connection checking stopped");
         }
+    }
+
+    private boolean isValidFirmwareVersion(String firmwareVersion) {
+        if (firmwareVersion == null) {
+            return false;
+        }
+
+        return firmwareVersion.contains("MF971");
     }
 
     private void setInfoStatus(String txt) {
@@ -114,6 +153,22 @@ public class ConnectionCheckerThread extends Thread {
             String msg = getCountersLabel() + txt;
             statusLbl.setText(msg);
             statusLbl.setForeground(new Color(17, 106, 72, 255));
+        }
+    }
+
+    private void setInfoFwVersion(String version) {
+        logger.info(String.format("fetched valid firmware version: %s", version));
+        if (fwLbl != null) {
+            fwLbl.setText(String.format("Firmware version: %s", version));
+            fwLbl.setForeground(new Color(17, 106, 72, 255));
+        }
+    }
+
+    private void setErrorFwVersion(String version) {
+        logger.info(String.format("fetched invalid firmware version: %s, probably not a MF971 router", version));
+        if (fwLbl != null) {
+            fwLbl.setText(String.format("Firmware version: %s", version));
+            fwLbl.setForeground(new Color(17, 106, 72, 255));
         }
     }
 
@@ -144,6 +199,6 @@ public class ConnectionCheckerThread extends Thread {
     }
 
     private String getCountersLabel() {
-        return "connectionFailures: %s, successfullRestarts: %s, failedRestarts: %s, restarting: %s%n----------------------------------------------------------------------%n%n".formatted(connectionFailures, successfullRestarts, failedRestarts, restarting);
+        return String.format("connectionFailures: %s, successfullRestarts: %s, failedRestarts: %s, restarting: %s%n----------------------------------------------------------------------%n%n", connectionFailures, successfullRestarts, failedRestarts, restarting);
     }
 }

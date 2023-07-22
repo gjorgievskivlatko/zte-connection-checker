@@ -7,7 +7,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 
 /*
 curl -s -v --header "Referer: http://192.168.1.1/index.html" \
@@ -18,15 +17,20 @@ public class CheckConnectionCommand implements HttpCommand<Void, Void> {
 
     private static final String PING_URI = "https://google.com";
 
+    private final HttpClient httpClient;
+    private final HttpRequest.Builder httpRequestBuilder;
+
+    public CheckConnectionCommand(HttpClient httpClient, HttpRequest.Builder httpRequestBuilder) {
+        this.httpClient = httpClient;
+        this.httpRequestBuilder = httpRequestBuilder;
+    }
+
     public Void execute(Void context) throws IOException, InterruptedException {
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest
-                .newBuilder()
-                .timeout(Duration.ofSeconds(3))
+        HttpRequest request = httpRequestBuilder
                 .uri(URI.create(PING_URI))
                 .GET()
                 .build();
-        client.send(request, HttpResponse.BodyHandlers.ofString());
+        httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         return null;
     }
 }

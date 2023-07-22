@@ -16,9 +16,11 @@ import static javax.swing.JOptionPane.ERROR_MESSAGE;
 @SpringBootApplication
 public class ConnectionCheckerApplication implements CommandLineRunner {
 
-    public static final String DEFAULT_PASSWORD = "YjQyd2twVlo=";
-    public static final String DEFAULT_DOMAIN = "192.168.1.1";
     public static final int DEFAULT_INTERVAL = 10_000;
+    public static final String DEFAULT_DOMAIN = "192.168.1.1";
+    public static final String DEFAULT_PASSWORD = "b42wkpVZ";
+
+    private static final String DEFAULT_FIRMWARE_VERSION_VALUE = "Firmware version: n/a ";
 
     private final FetchRDCommand fetchRDCommand;
     private final LoginCommand loginCommand;
@@ -54,7 +56,7 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
         if (connectionCheckerArgs.isCli()) {
             ConnectionCheckerThread connectionCheckerThread = new ConnectionCheckerThread(connectionCheckerArgs.getInterval(),
                     connectionCheckerArgs.getDomain(), connectionCheckerArgs.getPassword(),
-                    fetchRDCommand, loginCommand, rebootCommand, firmwareVersionCommand, checkConnectionCommand, null);
+                    fetchRDCommand, loginCommand, rebootCommand, firmwareVersionCommand, checkConnectionCommand, null, null);
             connectionCheckerThread.start();
         } else {
             SwingUtilities.invokeLater(() -> {
@@ -63,8 +65,8 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                 mainLayout.setLayout(new BoxLayout(mainLayout, BoxLayout.Y_AXIS));
 
                 // Create the layout
-                JPanel layout = new JPanel(new GridLayout(5, 2));
-                layout.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+                JPanel layoutPnl = new JPanel(new GridLayout(5, 2));
+                layoutPnl.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
                 // Create the input fields
                 JLabel intervalLbl = new JLabel("Interval:");
@@ -79,6 +81,9 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                 statusLbl.setWrapStyleWord(true);
                 statusLbl.setFont(statusLbl.getFont().deriveFont(statusLbl.getFont().getStyle() | Font.BOLD));
 
+                JLabel fwLbl = new JLabel(DEFAULT_FIRMWARE_VERSION_VALUE);
+                fwLbl.setFont(fwLbl.getFont().deriveFont(fwLbl.getFont().getStyle() | Font.BOLD));
+
                 AtomicReference<ConnectionCheckerThread> connectionCheckerThread = new AtomicReference<>(null);
 
                 JButton startBtn = new JButton("Start");
@@ -89,7 +94,7 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                     try {
                         intervalValue = Integer.parseInt(intervalTxt.getText());
                     } catch (NumberFormatException ignored) {
-                        JOptionPane.showMessageDialog(layout, "Invalid interval value", "Error", ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(layoutPnl, "Invalid interval value", "Error", ERROR_MESSAGE);
                         return;
                     }
                     startBtn.setEnabled(false);
@@ -98,7 +103,7 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                     passwordTxt.setEnabled(false);
                     stopBtn.setEnabled(true);
                     connectionCheckerThread.set(new ConnectionCheckerThread(intervalValue, domainTxt.getText(), passwordTxt.getText(),
-                            fetchRDCommand, loginCommand, rebootCommand, firmwareVersionCommand, checkConnectionCommand, statusLbl));
+                            fetchRDCommand, loginCommand, rebootCommand, firmwareVersionCommand, checkConnectionCommand, statusLbl, fwLbl));
                     connectionCheckerThread.get().start();
                 });
 
@@ -108,25 +113,33 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                     domainTxt.setEnabled(true);
                     passwordTxt.setEnabled(true);
                     startBtn.setEnabled(true);
+                    fwLbl.setText(DEFAULT_FIRMWARE_VERSION_VALUE);
                     if (connectionCheckerThread.get() != null && !connectionCheckerThread.get().isInterrupted()) {
                         connectionCheckerThread.get().interrupt();
                     }
                 });
 
-                layout.add(intervalLbl);
-                layout.add(intervalTxt);
-                layout.add(domainLbl);
-                layout.add(domainTxt);
-                layout.add(passwordLbl);
-                layout.add(passwordTxt);
-                layout.add(startBtn);
-                layout.add(stopBtn);
+                layoutPnl.add(intervalLbl);
+                layoutPnl.add(intervalTxt);
+                layoutPnl.add(domainLbl);
+                layoutPnl.add(domainTxt);
+                layoutPnl.add(passwordLbl);
+                layoutPnl.add(passwordTxt);
+                layoutPnl.add(startBtn);
+                layoutPnl.add(stopBtn);
+
+                JPanel fwPnl = new JPanel(new BorderLayout());
+                fwPnl.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+                fwPnl.setPreferredSize(new Dimension(fwPnl.getWidth(), 30));
+                fwPnl.add(fwLbl);
 
                 JPanel statusPnl = new JPanel(new BorderLayout());
+                statusPnl.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
                 statusPnl.setPreferredSize(new Dimension(statusPnl.getWidth(), 100));
                 statusPnl.add(statusLbl);
 
-                mainLayout.add(layout);
+                mainLayout.add(layoutPnl);
+                mainLayout.add(fwPnl);
                 mainLayout.add(statusPnl);
 
                 // Create the frame

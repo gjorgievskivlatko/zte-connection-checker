@@ -9,7 +9,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 
 /*
 curl -s -v --header "Referer: http://192.168.1.1/index.html" \
@@ -21,29 +20,41 @@ public class FetchRDCommand implements HttpCommand<FetchRDCommand.FetchRDCommand
     private static final String REFERER_HEADER_FORMAT = "http://%s/index.html";
     private static final String COMMAND_URI = "http://%s/goform/goform_get_cmd_process?isTest=%s&cmd=RD&_=%s";
 
+    private final HttpClient httpClient;
+    private final HttpRequest.Builder httpRequestBuilder;
     private final ObjectMapper objectMapper;
 
-    public FetchRDCommand(ObjectMapper objectMapper) {
+    public FetchRDCommand(HttpClient httpClient, HttpRequest.Builder httpRequestBuilder, ObjectMapper objectMapper) {
+        this.httpClient = httpClient;
+        this.httpRequestBuilder = httpRequestBuilder;
         this.objectMapper = objectMapper;
     }
 
     public RDDto execute(FetchRDCommand.FetchRDCommandContext context) throws IOException, InterruptedException {
         String domain = context.domain();
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest
-                .newBuilder()
-                .timeout(Duration.ofSeconds(10))
-                .uri(URI.create(COMMAND_URI.formatted(domain, false, System.currentTimeMillis())))
+        HttpRequest request = httpRequestBuilder
+                .uri(URI.create(String.format(COMMAND_URI, domain, false, System.currentTimeMillis())))
                 .GET()
-                .header("Referer", REFERER_HEADER_FORMAT.formatted(domain))
+                .header("Referer", String.format(REFERER_HEADER_FORMAT, domain))
                 .build();
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         RDDto rdDto = objectMapper.readValue(response.body(), RDDto.class);
         return rdDto;
     }
 
-    public record FetchRDCommandContext(String domain) {
+    public static final class FetchRDCommandContext {
+
+        private final String domain;
+
+        public FetchRDCommandContext(String domain) {
+            this.domain = domain;
+        }
+
+        public String domain() {
+            return domain;
+        }
+
     }
 }

@@ -9,7 +9,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 
 /*
 curl -s -v --header "Referer: http://192.168.1.1/index.html" \
@@ -22,29 +21,41 @@ public class FirmwareVersionCommand implements HttpCommand<FirmwareVersionComman
     private static final String REFERER_HEADER_FORMAT = "http://%s/index.html";
     private static final String COMMAND_URI = "http://%s/goform/goform_get_cmd_process?isTest=false&cmd=Language%%2Ccr_version%%2Cwa_inner_version&multi_data=1&_=%s";
 
+    private final HttpClient httpClient;
+    private final HttpRequest.Builder httpRequestBuilder;
     private final ObjectMapper objectMapper;
 
-    public FirmwareVersionCommand(ObjectMapper objectMapper) {
+    public FirmwareVersionCommand(HttpClient httpClient, HttpRequest.Builder httpRequestBuilder, ObjectMapper objectMapper) {
+        this.httpClient = httpClient;
+        this.httpRequestBuilder = httpRequestBuilder;
         this.objectMapper = objectMapper;
     }
 
     public FirmwareVersionResultDto execute(FirmwareVersionCommand.FirmwareVersionCommandContext context) throws IOException, InterruptedException {
         String domain = context.domain();
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest
-                .newBuilder()
-                .timeout(Duration.ofSeconds(10))
-                .uri(URI.create(COMMAND_URI.formatted(domain, System.currentTimeMillis())))
+        HttpRequest request = httpRequestBuilder
+                .uri(URI.create(String.format(COMMAND_URI, domain, System.currentTimeMillis())))
                 .GET()
-                .header("Referer", REFERER_HEADER_FORMAT.formatted(domain))
+                .header("Referer", String.format(REFERER_HEADER_FORMAT, domain))
                 .build();
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         FirmwareVersionResultDto firmwareVersionResultDto = objectMapper.readValue(response.body(), FirmwareVersionResultDto.class);
         return firmwareVersionResultDto;
     }
 
-    public record FirmwareVersionCommandContext(String domain) {
+    public static final class FirmwareVersionCommandContext {
+
+        private final String domain;
+
+        public FirmwareVersionCommandContext(String domain) {
+            this.domain = domain;
+        }
+
+        public String domain() {
+            return domain;
+        }
+
     }
 }
