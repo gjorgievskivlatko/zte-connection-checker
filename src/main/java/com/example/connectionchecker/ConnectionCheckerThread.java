@@ -13,7 +13,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.net.ConnectException;
 import java.net.http.HttpTimeoutException;
-import java.util.concurrent.TimeUnit;
 
 public class ConnectionCheckerThread extends Thread {
 
@@ -57,28 +56,7 @@ public class ConnectionCheckerThread extends Thread {
     public void run() {
         try {
             while (true) {
-                boolean isMF971 = false;
-                String fwVersion = null;
-                try {
-                    FirmwareVersionResultDto firmwareVersionResultDto = firmwareVersionCommand.execute(new FirmwareVersionCommand.FirmwareVersionCommandContext(domain));
-                    if (isValidFirmwareVersion(firmwareVersionResultDto.getFirmwareVersion())) {
-                        isMF971 = true;
-                        fwVersion = firmwareVersionResultDto.getFirmwareVersion();
-                        setInfoFwVersion(firmwareVersionResultDto.getFirmwareVersion());
-                    } else {
-                        setErrorFwVersion(firmwareVersionResultDto.getFirmwareVersion());
-                    }
-                } catch (ConnectException e) {
-                    setWarnStatus("Can not connect to the router during firmware check", e);
-                } catch (InterruptedException e) {
-                    throw e;
-                } catch (HttpTimeoutException e) {
-                    setWarnStatus("HttpTimeout during firmware check", e);
-                } catch (Exception e) {
-                    setErrorStatus("Unexpected exception during firmware check", e);
-                }
-
-                if (!isMF971) {
+                if (!isMF971Online()) {
                     Thread.sleep(10_000);
                     continue;
                 }
@@ -104,8 +82,10 @@ public class ConnectionCheckerThread extends Thread {
                         restarting = true;
                         connectionFailures++;
                         setErrorStatus("connection failed, restarting...", null);
-                        String a = DigestUtils.md5Hex(fwVersion);
-                        setInfoStatus(String.format("fw=%s, md5=%s", fwVersion, a));
+                        FirmwareVersionResultDto firmwareVersionResultDto = firmwareVersionCommand.execute(new FirmwareVersionCommand.FirmwareVersionCommandContext(domain));
+                        setInfoStatus(String.format("Fetched firmware version: %s", firmwareVersionResultDto.getFirmwareVersion()));
+                        String a = DigestUtils.md5Hex(firmwareVersionResultDto.getFirmwareVersion());
+                        setInfoStatus(String.format("fw=%s, md5=%s", firmwareVersionResultDto.getFirmwareVersion(), a));
                         RDDto rdDto = fetchRDCommand.execute(new FetchRDCommand.FetchRDCommandContext(domain));
                         setInfoStatus(String.format("fetched RD=%s", rdDto.getRD()));
                         LoginResultDto loginResultDto = loginCommand.execute(new LoginCommand.LoginCommandContext(domain, password));
@@ -117,11 +97,14 @@ public class ConnectionCheckerThread extends Thread {
                         } else {
                             failedRestarts++;
                         }
-                        setInfoStatus(String.format("reboot commands executed, waiting for a device/router startup, result=%s", rebootResult.getResult()));
+                        setInfoStatus(String.format("reboot commands executed, result=%s", rebootResult.getResult()));
                         // wait for a device startup
-                        Thread.sleep(TimeUnit.MINUTES.toMillis(1));
+                        do {
+                            Thread.sleep(10_000);
+                            setInfoStatus("waiting for a device/router startup");
+                        } while (!isMF971Online());
                         restarting = false;
-                        setInfoStatus("reboot should be finished");
+                        setInfoStatus("reboot finished");
                     } catch (ConnectException e) {
                         setWarnStatus("Can not connect to the router", e);
                     } catch (InterruptedException e) {
@@ -137,6 +120,29 @@ public class ConnectionCheckerThread extends Thread {
         } catch (InterruptedException e) {
             setInfoStatus("connection checking stopped");
         }
+    }
+
+    private boolean isMF971Online() throws InterruptedException {
+        boolean isOnline = false;
+        try {
+            FirmwareVersionResultDto firmwareVersionResultDto = firmwareVersionCommand.execute(new FirmwareVersionCommand.FirmwareVersionCommandContext(domain));
+            if (isValidFirmwareVersion(firmwareVersionResultDto.getFirmwareVersion())) {
+                isOnline = true;
+                setInfoFwVersion(firmwareVersionResultDto.getFirmwareVersion());
+            } else {
+                setErrorFwVersion(firmwareVersionResultDto.getFirmwareVersion());
+            }
+        } catch (ConnectException e) {
+            setWarnStatus("Can not connect to the router during online check", e);
+        } catch (InterruptedException e) {
+            throw e;
+        } catch (HttpTimeoutException e) {
+            setWarnStatus("HttpTimeout during online check", e);
+        } catch (Exception e) {
+            setErrorStatus("Unexpected exception during online check", e);
+        }
+
+        return isOnline;
     }
 
     private boolean isValidFirmwareVersion(String firmwareVersion) {
