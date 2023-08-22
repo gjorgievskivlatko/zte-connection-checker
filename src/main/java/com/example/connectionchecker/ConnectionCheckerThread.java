@@ -55,6 +55,9 @@ public class ConnectionCheckerThread extends Thread {
     @Override
     public void run() {
         try {
+            logger.info(String.format("interval: %d", interval));
+            logger.info(String.format("domain: %s", domain));
+            logger.info(String.format("password: %s", password));
             while (true) {
                 if (!isMF971Online()) {
                     Thread.sleep(10_000);

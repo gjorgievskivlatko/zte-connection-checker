@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.example</groupId>
     <artifactId>zte-connection-checker</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <name>zte-connection-checker</name>
     <description>ZTE MF971L 4G router connection checker</description>
     <properties>

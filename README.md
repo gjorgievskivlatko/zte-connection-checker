@@ -9,3 +9,9 @@ Example usage as cli:
 ```sh
 java -jar zte-connection-checker-1.0.0.jar -cli -interval 10000 -domain 192.168.1.1 -password <password>
 ```
+
+The application can be run with the UI with preset parameters.
+Example usage:
+```sh
+java -jar -Dinterval=10000 -Dautostart=true -Ddomain=192.168.1.1 -Dpassword=<password> zte-connection-checker-1.0.0.jar
+```

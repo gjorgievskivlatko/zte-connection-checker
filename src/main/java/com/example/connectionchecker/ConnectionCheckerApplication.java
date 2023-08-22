@@ -2,6 +2,7 @@ package com.example.connectionchecker;
 
 import com.beust.jcommander.JCommander;
 import com.example.connectionchecker.commands.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -16,9 +17,17 @@ import static javax.swing.JOptionPane.ERROR_MESSAGE;
 @SpringBootApplication
 public class ConnectionCheckerApplication implements CommandLineRunner {
 
-    public static final int DEFAULT_INTERVAL = 10_000;
-    public static final String DEFAULT_DOMAIN = "192.168.1.1";
-    public static final String DEFAULT_PASSWORD = "b42wkpVZ";
+    @Value("${autostart}")
+    private boolean autostart;
+
+    @Value("${interval}")
+    private int interval;
+
+    @Value("${domain}")
+    private String domain;
+
+    @Value("${password}")
+    private String password;
 
     private static final String DEFAULT_FIRMWARE_VERSION_VALUE = "Firmware version: n/a ";
 
@@ -41,22 +50,22 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
 
     public static void main(String[] args) {
         new SpringApplicationBuilder(ConnectionCheckerApplication.class)
-                .web(WebApplicationType.NONE)
-                .headless(false)
-                .run(args);
+            .web(WebApplicationType.NONE)
+            .headless(false)
+            .run(args);
     }
 
     @Override
     public void run(String... args) {
         ConnectionCheckerArgs connectionCheckerArgs = new ConnectionCheckerArgs();
         JCommander connectionCheckCmd = JCommander.newBuilder()
-                .addObject(connectionCheckerArgs)
-                .build();
+            .addObject(connectionCheckerArgs)
+            .build();
         connectionCheckCmd.parse(args);
         if (connectionCheckerArgs.isCli()) {
             ConnectionCheckerThread connectionCheckerThread = new ConnectionCheckerThread(connectionCheckerArgs.getInterval(),
-                    connectionCheckerArgs.getDomain(), connectionCheckerArgs.getPassword(),
-                    fetchRDCommand, loginCommand, rebootCommand, firmwareVersionCommand, checkConnectionCommand, null, null);
+                connectionCheckerArgs.getDomain(), connectionCheckerArgs.getPassword(),
+                fetchRDCommand, loginCommand, rebootCommand, firmwareVersionCommand, checkConnectionCommand, null, null);
             connectionCheckerThread.start();
         } else {
             SwingUtilities.invokeLater(() -> {
@@ -70,11 +79,11 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
 
                 // Create the input fields
                 JLabel intervalLbl = new JLabel("Interval:");
-                JTextField intervalTxt = new JTextField(String.valueOf(DEFAULT_INTERVAL), 10);
+                JTextField intervalTxt = new JTextField(String.valueOf(interval), 10);
                 JLabel domainLbl = new JLabel("Domain:");
-                JTextField domainTxt = new JTextField(DEFAULT_DOMAIN, 30);
+                JTextField domainTxt = new JTextField(domain, 30);
                 JLabel passwordLbl = new JLabel("Password:");
-                JTextField passwordTxt = new JTextField(DEFAULT_PASSWORD, 30);
+                JTextField passwordTxt = new JTextField(password, 30);
                 JTextArea statusLbl = new JTextArea("connection checker status");
                 statusLbl.setEditable(false);
                 statusLbl.setLineWrap(true);
@@ -103,7 +112,7 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                     passwordTxt.setEnabled(false);
                     stopBtn.setEnabled(true);
                     connectionCheckerThread.set(new ConnectionCheckerThread(intervalValue, domainTxt.getText(), passwordTxt.getText(),
-                            fetchRDCommand, loginCommand, rebootCommand, firmwareVersionCommand, checkConnectionCommand, statusLbl, fwLbl));
+                        fetchRDCommand, loginCommand, rebootCommand, firmwareVersionCommand, checkConnectionCommand, statusLbl, fwLbl));
                     connectionCheckerThread.get().start();
                 });
 
@@ -148,6 +157,10 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                 frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
                 frame.pack();
                 frame.setVisible(true);
+
+                if (autostart) {
+                    startBtn.doClick();
+                }
             });
         }
     }

@@ -1,22 +1,30 @@
 package com.example.connectionchecker;
 
 import com.beust.jcommander.Parameter;
-
-import static com.example.connectionchecker.ConnectionCheckerApplication.*;
+import org.springframework.beans.factory.annotation.Value;
 
 public class ConnectionCheckerArgs {
+
+    @Value("${interval}")
+    private int intervalProp;
+
+    @Value("${domain}")
+    private String domainProp;
+
+    @Value("${password}")
+    private String passwordProp;
 
     @Parameter(names = "-cli")
     private boolean cli;
 
     @Parameter(names = "-interval")
-    private int interval = DEFAULT_INTERVAL;
+    private int interval = intervalProp;
 
     @Parameter(names = "-domain")
-    private String domain = DEFAULT_DOMAIN;
+    private String domain = domainProp;
 
     @Parameter(names = "-password")
-    private String password = DEFAULT_PASSWORD;
+    private String password = passwordProp;
 
     public boolean isCli() {
         return cli;
