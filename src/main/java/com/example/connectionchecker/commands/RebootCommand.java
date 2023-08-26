@@ -16,18 +16,16 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
-public class RebootCommand implements HttpCommand<RebootCommand.RebootCommandContext, ResultDto> {
+public class RebootCommand extends HttpCommand<RebootCommand.RebootCommandContext, ResultDto> {
 
     private static final String REFERER_HEADER_FORMAT = "http://%s/index.html";
     private static final String COMMAND_URI = "http://%s/goform/goform_set_cmd_process";
 
     private final HttpClient httpClient;
-    private final HttpRequest.Builder httpRequestBuilder;
     private final ObjectMapper objectMapper;
 
-    public RebootCommand(HttpClient httpClient, HttpRequest.Builder httpRequestBuilder, ObjectMapper objectMapper) {
+    public RebootCommand(HttpClient httpClient, ObjectMapper objectMapper) {
         this.httpClient = httpClient;
-        this.httpRequestBuilder = httpRequestBuilder;
         this.objectMapper = objectMapper;
     }
 
@@ -38,17 +36,17 @@ public class RebootCommand implements HttpCommand<RebootCommand.RebootCommandCon
         parameters.put("AD", context.ad());
 
         String form = parameters.entrySet()
-                .stream()
-                .map(e -> e.getKey() + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
-                .collect(Collectors.joining("&"));
+            .stream()
+            .map(e -> e.getKey() + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
+            .collect(Collectors.joining("&"));
 
-        HttpRequest request = httpRequestBuilder
-                .uri(URI.create(String.format(COMMAND_URI, context.domain())))
-                .POST(HttpRequest.BodyPublishers.ofString(form))
-                .header("Referer", String.format(REFERER_HEADER_FORMAT, context.domain()))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("Cookie", context.cookie())
-                .build();
+        HttpRequest request = httpRequestBuilder()
+            .uri(URI.create(String.format(COMMAND_URI, context.domain())))
+            .POST(HttpRequest.BodyPublishers.ofString(form))
+            .header("Referer", String.format(REFERER_HEADER_FORMAT, context.domain()))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("Cookie", context.cookie())
+            .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 

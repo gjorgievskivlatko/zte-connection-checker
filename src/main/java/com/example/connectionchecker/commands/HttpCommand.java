@@ -1,12 +1,22 @@
 package com.example.connectionchecker.commands;
 
+import com.example.connectionchecker.config.SettingsConstants;
+
+import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 
-public interface HttpCommand<C, R> {
+public abstract class HttpCommand<C, R> {
 
-    R execute(C context) throws Exception;
+    abstract R execute(C context) throws Exception;
 
-    default void checkStatusCode(HttpResponse<String> response) {
+    HttpRequest.Builder httpRequestBuilder() {
+        return HttpRequest
+            .newBuilder()
+            .timeout(Duration.ofSeconds(SettingsConstants.CONNECTION_TIMEOUT));
+    }
+
+    void checkStatusCode(HttpResponse<String> response) {
         if (response.statusCode() / 100 != 2) {
             throw new HttpResponseException(response.statusCode(), response.body());
         }

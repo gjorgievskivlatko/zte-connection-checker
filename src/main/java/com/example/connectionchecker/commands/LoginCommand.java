@@ -23,18 +23,16 @@ curl -s -v --header "Referer: http://192.168.1.1/index.html" \
  http://192.168.1.1/goform/goform_set_cmd_process
  */
 @Component
-public class LoginCommand implements HttpCommand<LoginCommand.LoginCommandContext, LoginResultDto> {
+public class LoginCommand extends HttpCommand<LoginCommand.LoginCommandContext, LoginResultDto> {
 
     private static final String REFERER_HEADER_FORMAT = "http://%s/index.html";
     private static final String COMMAND_URI = "http://%s/goform/goform_set_cmd_process";
 
     private final HttpClient httpClient;
-    private final HttpRequest.Builder httpRequestBuilder;
     private final ObjectMapper objectMapper;
 
-    public LoginCommand(HttpClient httpClient, HttpRequest.Builder httpRequestBuilder, ObjectMapper objectMapper) {
+    public LoginCommand(HttpClient httpClient, ObjectMapper objectMapper) {
         this.httpClient = httpClient;
-        this.httpRequestBuilder = httpRequestBuilder;
         this.objectMapper = objectMapper;
     }
 
@@ -49,7 +47,7 @@ public class LoginCommand implements HttpCommand<LoginCommand.LoginCommandContex
             .map(e -> e.getKey() + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
             .collect(Collectors.joining("&"));
 
-        HttpRequest request = httpRequestBuilder
+        HttpRequest request = httpRequestBuilder()
             .uri(URI.create(String.format(COMMAND_URI, context.domain())))
             .POST(HttpRequest.BodyPublishers.ofString(form))
             .header("Referer", String.format(REFERER_HEADER_FORMAT, context.domain()))

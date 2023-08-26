@@ -2,6 +2,7 @@ package com.example.connectionchecker;
 
 import com.beust.jcommander.JCommander;
 import com.example.connectionchecker.commands.*;
+import com.example.connectionchecker.config.SettingsConstants;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.WebApplicationType;
@@ -24,7 +25,7 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
     private int interval;
 
     @Value("${connectionTimeout}")
-    private int connectionTimeout;
+    private int connectionTimeoutProp;
 
     @Value("${domain}")
     private String domain;
@@ -84,7 +85,7 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                 JLabel intervalLbl = new JLabel("Check Interval (ms):");
                 JTextField intervalTxt = new JTextField(String.valueOf(interval), 10);
                 JLabel connectionTimeoutLbl = new JLabel("Connection Timeout (ms):");
-                JTextField connectionTimeoutTxt = new JTextField(String.valueOf(connectionTimeout), 10);
+                JTextField connectionTimeoutTxt = new JTextField(String.valueOf(connectionTimeoutProp), 10);
                 JLabel domainLbl = new JLabel("Domain:");
                 JTextField domainTxt = new JTextField(domain, 30);
                 JLabel passwordLbl = new JLabel("Password:");
@@ -105,10 +106,12 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                 stopBtn.setEnabled(false);
                 startBtn.addActionListener(e -> {
                     int intervalValue;
+                    int connectionTimeoutValue;
                     try {
                         intervalValue = Integer.parseInt(intervalTxt.getText());
+                        connectionTimeoutValue = Integer.parseInt(connectionTimeoutTxt.getText());
                     } catch (NumberFormatException ignored) {
-                        JOptionPane.showMessageDialog(layoutPnl, "Invalid interval value", "Error", ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(layoutPnl, "Invalid numeric value", "Error", ERROR_MESSAGE);
                         return;
                     }
                     startBtn.setEnabled(false);
@@ -117,6 +120,7 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                     domainTxt.setEnabled(false);
                     passwordTxt.setEnabled(false);
                     stopBtn.setEnabled(true);
+                    SettingsConstants.CONNECTION_TIMEOUT = connectionTimeoutValue;
                     connectionCheckerThread.set(new ConnectionCheckerThread(intervalValue, domainTxt.getText(), passwordTxt.getText(),
                         fetchRDCommand, loginCommand, rebootCommand, firmwareVersionCommand, checkConnectionCommand, statusLbl, fwLbl));
                     connectionCheckerThread.get().start();
