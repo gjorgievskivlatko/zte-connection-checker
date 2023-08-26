@@ -41,9 +41,7 @@ public class FirmwareVersionCommand implements HttpCommand<FirmwareVersionComman
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() != 200) {
-            throw new HttpResponseException(response.statusCode(), response.body());
-        }
+        checkStatusCode(response);
 
         FirmwareVersionResultDto firmwareVersionResultDto = objectMapper.readValue(response.body(), FirmwareVersionResultDto.class);
         return firmwareVersionResultDto;

@@ -58,9 +58,7 @@ public class LoginCommand implements HttpCommand<LoginCommand.LoginCommandContex
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() != 200) {
-            throw new HttpResponseException(response.statusCode(), response.body());
-        }
+        checkStatusCode(response);
 
         ResultDto resultDto = objectMapper.readValue(response.body(), ResultDto.class);
 

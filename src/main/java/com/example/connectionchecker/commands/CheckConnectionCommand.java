@@ -33,9 +33,7 @@ public class CheckConnectionCommand implements HttpCommand<Void, Void> {
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() != 200) {
-            throw new HttpResponseException(response.statusCode(), response.body());
-        }
+        checkStatusCode(response);
 
         return null;
     }

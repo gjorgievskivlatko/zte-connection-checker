@@ -23,6 +23,9 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
     @Value("${interval}")
     private int interval;
 
+    @Value("${connectionTimeout}")
+    private int connectionTimeout;
+
     @Value("${domain}")
     private String domain;
 
@@ -74,12 +77,14 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                 mainLayout.setLayout(new BoxLayout(mainLayout, BoxLayout.Y_AXIS));
 
                 // Create the layout
-                JPanel layoutPnl = new JPanel(new GridLayout(5, 2));
+                JPanel layoutPnl = new JPanel(new GridLayout(6, 2));
                 layoutPnl.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
                 // Create the input fields
-                JLabel intervalLbl = new JLabel("Interval:");
+                JLabel intervalLbl = new JLabel("Check Interval (ms):");
                 JTextField intervalTxt = new JTextField(String.valueOf(interval), 10);
+                JLabel connectionTimeoutLbl = new JLabel("Connection Timeout (ms):");
+                JTextField connectionTimeoutTxt = new JTextField(String.valueOf(connectionTimeout), 10);
                 JLabel domainLbl = new JLabel("Domain:");
                 JTextField domainTxt = new JTextField(domain, 30);
                 JLabel passwordLbl = new JLabel("Password:");
@@ -108,6 +113,7 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                     }
                     startBtn.setEnabled(false);
                     intervalTxt.setEnabled(false);
+                    connectionTimeoutTxt.setEnabled(false);
                     domainTxt.setEnabled(false);
                     passwordTxt.setEnabled(false);
                     stopBtn.setEnabled(true);
@@ -119,6 +125,7 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
                 stopBtn.addActionListener(e -> {
                     stopBtn.setEnabled(false);
                     intervalTxt.setEnabled(true);
+                    connectionTimeoutTxt.setEnabled(true);
                     domainTxt.setEnabled(true);
                     passwordTxt.setEnabled(true);
                     startBtn.setEnabled(true);
@@ -130,6 +137,8 @@ public class ConnectionCheckerApplication implements CommandLineRunner {
 
                 layoutPnl.add(intervalLbl);
                 layoutPnl.add(intervalTxt);
+                layoutPnl.add(connectionTimeoutLbl);
+                layoutPnl.add(connectionTimeoutTxt);
                 layoutPnl.add(domainLbl);
                 layoutPnl.add(domainTxt);
                 layoutPnl.add(passwordLbl);

@@ -1,5 +1,6 @@
 package com.example.connectionchecker.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +13,9 @@ import java.time.Duration;
 @Configuration
 public class HttpClientConfig {
 
+    @Value("${connectionTimeout}")
+    private int connectionTimeout;
+
     @Bean
     public HttpClient httpClient() {
         return HttpClient.newHttpClient();
@@ -22,6 +26,6 @@ public class HttpClientConfig {
     public HttpRequest.Builder httpRequestBuilder() {
         return HttpRequest
                 .newBuilder()
-                .timeout(Duration.ofSeconds(10));
+                .timeout(Duration.ofSeconds(connectionTimeout));
     }
 }

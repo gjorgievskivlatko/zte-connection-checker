@@ -52,9 +52,7 @@ public class RebootCommand implements HttpCommand<RebootCommand.RebootCommandCon
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() != 200) {
-            throw new HttpResponseException(response.statusCode(), response.body());
-        }
+        checkStatusCode(response);
 
         ResultDto resultDto = objectMapper.readValue(response.body(), ResultDto.class);
         return resultDto;
