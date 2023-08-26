@@ -45,18 +45,22 @@ public class LoginCommand implements HttpCommand<LoginCommand.LoginCommandContex
         parameters.put("password", Base64.getEncoder().encodeToString(context.password().getBytes(StandardCharsets.UTF_8)));
 
         String form = parameters.entrySet()
-                .stream()
-                .map(e -> e.getKey() + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
-                .collect(Collectors.joining("&"));
+            .stream()
+            .map(e -> e.getKey() + "=" + URLEncoder.encode(e.getValue(), StandardCharsets.UTF_8))
+            .collect(Collectors.joining("&"));
 
         HttpRequest request = httpRequestBuilder
-                .uri(URI.create(String.format(COMMAND_URI, context.domain())))
-                .POST(HttpRequest.BodyPublishers.ofString(form))
-                .header("Referer", String.format(REFERER_HEADER_FORMAT, context.domain()))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .build();
+            .uri(URI.create(String.format(COMMAND_URI, context.domain())))
+            .POST(HttpRequest.BodyPublishers.ofString(form))
+            .header("Referer", String.format(REFERER_HEADER_FORMAT, context.domain()))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new HttpResponseException(response.statusCode(), response.body());
+        }
 
         ResultDto resultDto = objectMapper.readValue(response.body(), ResultDto.class);
 

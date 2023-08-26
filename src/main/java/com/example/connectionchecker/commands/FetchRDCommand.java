@@ -40,6 +40,10 @@ public class FetchRDCommand implements HttpCommand<FetchRDCommand.FetchRDCommand
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
+        if (response.statusCode() != 200) {
+            throw new HttpResponseException(response.statusCode(), response.body());
+        }
+
         RDDto rdDto = objectMapper.readValue(response.body(), RDDto.class);
         return rdDto;
     }

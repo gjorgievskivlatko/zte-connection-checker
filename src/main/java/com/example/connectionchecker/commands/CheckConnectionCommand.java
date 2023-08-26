@@ -30,7 +30,13 @@ public class CheckConnectionCommand implements HttpCommand<Void, Void> {
                 .uri(URI.create(PING_URI))
                 .GET()
                 .build();
-        httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new HttpResponseException(response.statusCode(), response.body());
+        }
+
         return null;
     }
 }
