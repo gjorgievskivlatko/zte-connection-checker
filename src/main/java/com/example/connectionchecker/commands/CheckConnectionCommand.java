@@ -15,7 +15,7 @@ curl -s -v --header "Referer: http://192.168.1.1/index.html" \
 @Component
 public class CheckConnectionCommand extends HttpCommand<Void, Void> {
 
-    private static final String PING_URI = "https://google.com";
+    private static final String PING_URI = "https://www.google.com/";
 
     private final HttpClient httpClient;
 
@@ -29,9 +29,7 @@ public class CheckConnectionCommand extends HttpCommand<Void, Void> {
             .GET()
             .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        checkStatusCode(response);
+        httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         return null;
     }
